@@ -8,8 +8,10 @@ import React, {
   import jsPDF from "jspdf";
   import "jspdf-autotable";
   
-  const API_URL =
-    "https://177.11.209.38/vertis/VertisConnect.dll/api/V1.1/get_nfe_controle";
+  const API_URL = "/api/nfe";
+  
+  // const API_URL =
+  //  "https://177.11.209.38/vertis/VertisConnect.dll/api/V1.1/get_nfe_controle";
   
   // Helpers pra interpretar os "N"/vazio
   const isFalse = (v) =>

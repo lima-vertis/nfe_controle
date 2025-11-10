@@ -9,7 +9,7 @@ import React, {
   import "jspdf-autotable";
   
   const API_URL =
-    "http://177.11.209.38/vertis/VertisConnect.dll/api/V1.1/get_nfe_controle";
+    "https://177.11.209.38/vertis/VertisConnect.dll/api/V1.1/get_nfe_controle";
   
   // Helpers pra interpretar os "N"/vazio
   const isFalse = (v) =>

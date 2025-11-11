@@ -8,9 +8,20 @@ import React, {
   import jsPDF from "jspdf";
   import "jspdf-autotable";
   
-  const API_URL = "/api/nfe";
+  // Decide a URL da API conforme o ambiente (local x produção)
+  const getApiUrl = () => {
+    if (typeof window !== "undefined") {
+      const host = window.location.hostname;
+      // Em desenvolvimento local, usa o IP direto
+      if (host === "localhost" || host === "127.0.0.1") {
+        return "http://177.11.209.38/vertis/VertisConnect.dll/api/V1.1/get_nfe_controle";
+      }
+    }
+    // Em produção (Vercel / HTTPS), usa a rota da Vercel
+    return "/api/nfe";
+  };
   
-  //const API_URL = "http://177.11.209.38/vertis/VertisConnect.dll/api/V1.1/get_nfe_controle";
+  const API_URL = getApiUrl();
   
   // Helpers pra interpretar os "N"/vazio
   const isFalse = (v) =>
@@ -43,12 +54,22 @@ import React, {
     { key: "tem_certificado", label: "Certificado" },
     { key: "qr_code_homologacao", label: "QRC Homologação" },
     { key: "qr_code_producao", label: "QRC Produção" },
-    { key: "teste_cupom", label: "Testou Cupom" },
-    { key: "teste_nfse", label: "Testou NFSe" }
+    { key: "teste_cupom", label: "Teste | Cupom" },
+    { key: "teste_nfse", label: "Teste | NFe" }
   ];
   
+  // Colunas que devem ficar com conteúdo centralizado
+  const centeredColumnKeys = new Set([
+    "cod_unid_negoc",
+    "cod_unid_oper",
+    "tem_certificado",
+    "qr_code_homologacao",
+    "qr_code_producao",
+    "teste_cupom",
+    "teste_nfse"
+  ]);
+  
   // função pra remover registros duplicados
-  // você pode ajustar a "chave" se fizer sentido mudar
   const dedupeData = (list) => {
     const seen = new Set();
     return list.filter((row) => {
@@ -100,6 +121,8 @@ import React, {
           setLoading(true);
           setError("");
   
+          console.log("Chamando API_URL:", API_URL);
+  
           const response = await fetch(API_URL);
           if (!response.ok) {
             throw new Error(`Erro na API: ${response.status}`);
@@ -111,7 +134,6 @@ import React, {
           // deduplicar dados
           const deduped = dedupeData(list);
   
-          // logs opcionais pra conferir
           console.log("Total recebido da API:", list.length);
           console.log("Total após dedupe:", deduped.length);
   
@@ -145,7 +167,6 @@ import React, {
       const contactTerm = normalize(contactFilter);
   
       return data.filter((row) => {
-        
         const unidadeOp = normalize(row.nom_unid_oper); // unidade atual
         const contato = normalize(row.nom_contato);
   
@@ -355,12 +376,48 @@ import React, {
           </div>
   
           <button className="pdf-button" onClick={handleExportPDF}>
-            Exportar tabela em PDF
+            PDF
           </button>
         </header>
   
         <main className="app-main">
-          {/* FILTROS */}
+          {/* 1) WIDGETS */}
+          {!loading && !error && (
+            <section className="widgets-grid">
+              <Widget
+                title="Certificado"
+                value={stats.comCertificado}
+                total={totalFiltrado}
+                percent={getPercent(stats.comCertificado)}
+              />
+              <Widget
+                title="QR CODE | Homologação"
+                value={stats.comQrcHom}
+                total={totalFiltrado}
+                percent={getPercent(stats.comQrcHom)}
+              />
+              <Widget
+                title="QR CODE | Produção"
+                value={stats.comQrcProd}
+                total={totalFiltrado}
+                percent={getPercent(stats.comQrcProd)}
+              />
+              <Widget
+                title="NFCe | Teste"
+                value={stats.testouCupom}
+                total={totalFiltrado}
+                percent={getPercent(stats.testouCupom)}
+              />
+              <Widget
+                title="NFe | Teste"
+                value={stats.testouNFSe}
+                total={totalFiltrado}
+                percent={getPercent(stats.testouNFSe)}
+              />
+            </section>
+          )}
+  
+          {/* 2) FILTROS */}
           <section className="filters-bar">
             <div className="filter-group">
               <label className="filter-label">Filtrar por cliente</label>
@@ -396,6 +453,7 @@ import React, {
             </div>
           </section>
   
+          {/* LOADING / ERRO */}
           {loading && <div className="status-badge loading">Carregando...</div>}
           {error && (
             <div className="status-badge error">
@@ -403,175 +461,155 @@ import React, {
             </div>
           )}
   
+          {/* 3) TABELA */}
           {!loading && !error && (
-            <>
-              {/* WIDGETS */}
-              <section className="widgets-grid">
-                <Widget
-                  title="Certificado"
-                  value={stats.comCertificado}
-                  total={totalFiltrado}
-                  percent={getPercent(stats.comCertificado)}
-                />
-                <Widget
-                  title="QR CODE | Homologação"
-                  value={stats.comQrcHom}
-                  total={totalFiltrado}
-                  percent={getPercent(stats.comQrcHom)}
-                />
-                <Widget
-                  title="QR CODE | Produção"
-                  value={stats.comQrcProd}
-                  total={totalFiltrado}
-                  percent={getPercent(stats.comQrcProd)}
-                />
-                <Widget
-                  title="NFCe | Teste"
-                  value={stats.testouCupom}
-                  total={totalFiltrado}
-                  percent={getPercent(stats.testouCupom)}
-                />
-                <Widget
-                  title="NFe | Teste"
-                  value={stats.testouNFSe}
-                  total={totalFiltrado}
-                  percent={getPercent(stats.testouNFSe)}
-                />
-              </section>
+            <section className="table-card">
+              <div className="table-header">
+                <h2>Controle de NFe</h2>
+                <span className="table-total">
+                  Itens nesta página: <strong>{paginatedData.length}</strong> ·{" "}
+                  Filtrados: <strong>{totalItens}</strong> · Total geral:{" "}
+                  <strong>{originalTotal}</strong>
+                </span>
+              </div>
   
-              {/* TABELA */}
-              <section className="table-card">
-                <div className="table-header">
-                  <h2>Controle de NFe</h2>
-                  <span className="table-total">
-                    Itens nesta página: <strong>{paginatedData.length}</strong> ·{" "}
-                    Filtrados: <strong>{totalItens}</strong> · Total geral:{" "}
-                    <strong>{originalTotal}</strong>
-                  </span>
-                </div>
-  
-                <div className="table-wrapper">
-                  <table className="table mb-0">
-                    <thead>
+              <div className="table-wrapper">
+                <table className="table mb-0">
+                  <thead>
+                    <tr>
+                      {columns.map((col) => (
+                        <th
+                          key={col.key}
+                          onClick={() => handleSort(col.key)}
+                          className={
+                            "sortable" +
+                            (centeredColumnKeys.has(col.key) ? " text-center" : "")
+                          }
+                          style={{ cursor: "pointer" }}
+                        >
+                          <span>{col.label}</span>
+                          <span className="sort-icon ms-1">
+                            {sortIcon(col.key)}
+                          </span>
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {totalItens === 0 && (
                       <tr>
-                        {columns.map((col) => (
-                          <th
-                            key={col.key}
-                            onClick={() => handleSort(col.key)}
-                            className="sortable"
-                            style={{ cursor: "pointer" }}
-                          >
-                            <span>{col.label}</span>
-                            <span className="sort-icon ms-1">
-                              {sortIcon(col.key)}
-                            </span>
-                          </th>
-                        ))}
+                        <td colSpan={columns.length} className="empty-state">
+                          Nenhum registro encontrado com os filtros atuais.
+                        </td>
                       </tr>
-                    </thead>
-                    <tbody>
-                      {totalItens === 0 && (
-                        <tr>
-                          <td colSpan={columns.length} className="empty-state">
-                            Nenhum registro encontrado com os filtros atuais.
-                          </td>
+                    )}
+                    {totalItens > 0 &&
+                      paginatedData.map((row, idx) => (
+                        <tr
+                          key={`${row.cod_unid_negoc}-${row.cod_unid_oper}-${idx}`}
+                        >
+                          {columns.map((col) => {
+                            const value = row[col.key];
+                            let display = value;
+  
+                            if (typeof value === "boolean") {
+                              display = value ? "Sim" : "Não";
+                            } else if (value === "S") {
+                              display = "Sim";
+                            } else if (value === "N") {
+                              display = "Não";
+                            }
+  
+                            return (
+                              <td
+                                key={col.key}
+                                className={
+                                  centeredColumnKeys.has(col.key)
+                                    ? "text-center"
+                                    : ""
+                                }
+                              >
+                                {display}
+                              </td>
+                            );
+                          })}
                         </tr>
-                      )}
-                      {totalItens > 0 &&
-                        paginatedData.map((row, idx) => (
-                          <tr key={`${row.cod_unid_negoc}-${row.cod_unid_oper}-${idx}`}>
-                            {columns.map((col) => {
-                              const value = row[col.key];
-                              let display = value;
+                      ))}
+                  </tbody>
+                </table>
+              </div>
   
-                              if (typeof value === "boolean") {
-                                display = value ? "Sim" : "Não";
-                              } else if (value === "S") {
-                                display = "Sim";
-                              } else if (value === "N") {
-                                display = "Não";
-                              }
-  
-                              return <td key={col.key}>{display}</td>;
-                            })}
-                          </tr>
-                        ))}
-                    </tbody>
-                  </table>
-                </div>
-  
-                {/* RODAPÉ: Itens por página + paginação Bootstrap */}
-                {totalItens > 0 && (
-                  <div className="table-footer-row mt-2 d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-2">
-                    <div className="page-size d-flex align-items-center gap-2">
-                      <span className="page-size-label">Itens por página:</span>
-                      <select
-                        className="page-size-select form-select form-select-sm"
-                        style={{ width: "auto" }}
-                        value={itemsPerPage}
-                        onChange={handleChangeItemsPerPage}
-                      >
-                        <option value={10}>10</option>
-                        <option value={25}>25</option>
-                        <option value={50}>50</option>
-                      </select>
-                    </div>
-  
-                    <nav
-                      aria-label="Navegação de páginas"
-                      className="mt-1 mt-md-0"
+              {/* RODAPÉ: Itens por página + paginação Bootstrap */}
+              {totalItens > 0 && (
+                <div className="table-footer-row mt-2 d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-2">
+                  <div className="page-size d-flex align-items-center gap-2">
+                    <span className="page-size-label">Itens por página:</span>
+                    <select
+                      className="page-size-select form-select form-select-sm"
+                      style={{ width: "auto" }}
+                      value={itemsPerPage}
+                      onChange={handleChangeItemsPerPage}
                     >
-                      <ul className="pagination pagination-sm mb-0">
-                        <li
-                          className={`page-item ${
-                            currentPageSafe === 1 ? "disabled" : ""
-                          }`}
-                        >
-                          <button
-                            className="page-link"
-                            onClick={handlePrevPage}
-                            type="button"
-                          >
-                            Anterior
-                          </button>
-                        </li>
-  
-                        {pageNumbers.map((page) => (
-                          <li
-                            key={page}
-                            className={`page-item ${
-                              page === currentPageSafe ? "active" : ""
-                            }`}
-                          >
-                            <button
-                              className="page-link"
-                              type="button"
-                              onClick={() => handleGoToPage(page)}
-                            >
-                              {page}
-                            </button>
-                          </li>
-                        ))}
-  
-                        <li
-                          className={`page-item ${
-                            currentPageSafe === totalPaginas ? "disabled" : ""
-                          }`}
-                        >
-                          <button
-                            className="page-link"
-                            onClick={handleNextPage}
-                            type="button"
-                          >
-                            Próxima
-                          </button>
-                        </li>
-                      </ul>
-                    </nav>
+                      <option value={10}>10</option>
+                      <option value={25}>25</option>
+                      <option value={50}>50</option>
+                    </select>
                   </div>
-                )}
-              </section>
-            </>
+  
+                  <nav
+                    aria-label="Navegação de páginas"
+                    className="mt-1 mt-md-0"
+                  >
+                    <ul className="pagination pagination-sm mb-0">
+                      <li
+                        className={`page-item ${
+                          currentPageSafe === 1 ? "disabled" : ""
+                        }`}
+                      >
+                        <button
+                          className="page-link"
+                          onClick={handlePrevPage}
+                          type="button"
+                        >
+                          Anterior
+                        </button>
+                      </li>
+  
+                      {pageNumbers.map((page) => (
+                        <li
+                          key={page}
+                          className={`page-item ${
+                            page === currentPageSafe ? "active" : ""
+                          }`}
+                        >
+                          <button
+                            className="page-link"
+                            type="button"
+                            onClick={() => handleGoToPage(page)}
+                          >
+                            {page}
+                          </button>
+                        </li>
+                      ))}
+  
+                      <li
+                        className={`page-item ${
+                          currentPageSafe === totalPaginas ? "disabled" : ""
+                        }`}
+                      >
+                        <button
+                          className="page-link"
+                          onClick={handleNextPage}
+                          type="button"
+                        >
+                          Próxima
+                        </button>
+                      </li>
+                    </ul>
+                  </nav>
+                </div>
+              )}
+            </section>
           )}
         </main>
       </div>

@@ -10,8 +10,7 @@ import React, {
   
   const API_URL = "/api/nfe";
   
-  // const API_URL =
-  //  "https://177.11.209.38/vertis/VertisConnect.dll/api/V1.1/get_nfe_controle";
+  //const API_URL = "http://177.11.209.38/vertis/VertisConnect.dll/api/V1.1/get_nfe_controle";
   
   // Helpers pra interpretar os "N"/vazio
   const isFalse = (v) =>
@@ -37,8 +36,8 @@ import React, {
   
   // Colunas da tabela, casando com o JSON
   const columns = [
-    { key: "cod_unid_negoc", label: "Cód. Neg" },
-    { key: "cod_unid_oper", label: "Cód. Oper." },
+    { key: "cod_unid_negoc", label: "Unid. Neg." },
+    { key: "cod_unid_oper", label: "Unid. Oper." },
     { key: "nom_unid_oper", label: "Unidade" },
     { key: "nom_contato", label: "Contato" },
     { key: "tem_certificado", label: "Certificado" },
@@ -146,15 +145,12 @@ import React, {
       const contactTerm = normalize(contactFilter);
   
       return data.filter((row) => {
-        const cliente1 = normalize(row.nom_unid_negoc);  // possível nome de cliente
-        const cliente2 = normalize(row.nom_unid_negoce); // var legacy
-        const unidadeOp = normalize(row.nom_unid_oper);  // unidade atual
+        
+        const unidadeOp = normalize(row.nom_unid_oper); // unidade atual
         const contato = normalize(row.nom_contato);
   
         const matchClient = clientTerm
-          ? cliente1.includes(clientTerm) ||
-            cliente2.includes(clientTerm) ||
-            unidadeOp.includes(clientTerm)
+          ? unidadeOp.includes(clientTerm)
           : true;
   
         const matchContact = contactTerm ? contato.includes(contactTerm) : true;

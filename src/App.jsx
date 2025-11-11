@@ -233,6 +233,41 @@ import React, {
         ? ((value / totalFiltrado) * 100).toFixed(1).replace(".", ",")
         : "0,0";
   
+    // 🔢 Progresso geral (somando tarefas feitas em todos os widgets)
+    const overallProgress = useMemo(() => {
+      if (!totalFiltrado) {
+        return {
+          percentNumber: 0,
+          percentText: "0,0",
+          done: 0,
+          total: 0
+        };
+      }
+  
+      const completedTasks =
+        stats.comCertificado +
+        stats.comQrcHom +
+        stats.comQrcProd +
+        stats.testouCupom +
+        stats.testouNFSe;
+  
+      // 5 tarefas possíveis por cliente (certificado + hom + prod + cupom + nfe)
+      const totalTasks = totalFiltrado * 5;
+  
+      const percentNumber = totalTasks
+        ? (completedTasks / totalTasks) * 100
+        : 0;
+  
+      const percentText = percentNumber.toFixed(1).replace(".", ",");
+  
+      return {
+        percentNumber,
+        percentText,
+        done: completedTasks,
+        total: totalTasks
+      };
+    }, [stats, totalFiltrado]);
+  
     // Ordenação (em cima dos dados filtrados)
     const sortedData = useMemo(() => {
       if (!filteredData.length) return [];
@@ -372,6 +407,29 @@ import React, {
             />
             <div className="logo-text">
               <span className="logo-subtitle">NFe | Painel de Controle</span>
+  
+              {/* Bloco de progresso geral, mais sutil */}
+              <div className="header-progress">
+                <div className="header-progress-top">
+                  <span className="header-progress-label">Progresso Geral: </span>
+                  <span className="header-progress-value">
+                    {overallProgress.percentText}%{" "}
+                    {overallProgress.total > 0 && (
+                      <span className="header-progress-counter">
+                        ({overallProgress.done}/{overallProgress.total})
+                      </span>
+                    )}
+                  </span>
+                </div>
+                <div className="header-progress-bar">
+                  <div
+                    className="header-progress-bar-fill"
+                    style={{
+                      width: `${overallProgress.percentNumber}%`
+                    }}
+                  />
+                </div>
+              </div>
             </div>
           </div>
   
